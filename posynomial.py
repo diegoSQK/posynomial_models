@@ -1,7 +1,7 @@
 import numpy as np
 from cvxpy import *
 
-def nnrsqrt_LASSO(phi, y, s, l, e):
+def nnrsqrt_LASSO(phi, y, s, l):
     #returns a sparse coefficient vector x
     #model overparameterized with n possible exponent vectors for each measurement
     #parameters: 
@@ -9,8 +9,10 @@ def nnrsqrt_LASSO(phi, y, s, l, e):
         #y: m-length vector of output observations
         #s: sqrt-LASSO regularization scalar
         #l: n-length vector of l1-norm regularization weights
-        #e: stopping criterion: solution returned will be e-suboptimal
     print "Solving LASSO problem..."
+
+    def dot(x, y):
+        return sum_entries(mul_elemwise(x, y))
 
     m = phi.shape[0]
     n = phi.shape[1]
@@ -19,57 +21,14 @@ def nnrsqrt_LASSO(phi, y, s, l, e):
     phi_t = np.r_[phi, s*np.eye(n)]
     y = np.matrix(y).T
     y_t = np.r_[y, np.matrix(np.zeros(n)).T]
-    x = np.zeros(n)
+    x = Variable(n)
 
-    #sequential coordinate descent
-    h = -np.dot(phi_t.T, y_t)
-    c = norm(y_t, ord=2)**2
-    for _ in range(5000):
-    #while True:
-        #formulate and check stopping criterion
-        #Currently too expensive...?
-        """
-        u_t = np.subtract(np.matrix(np.dot(phi_t, x)).T, y_t)
-        u_t /= norm(u_t, ord=2)
-        cond = True
-        if np.less(np.ravel(np.dot(phi_t.T, u_t)), -l).any():
-            J = []
-            for i in range(r):
-                j = np.dot(phi_t[:,i], u_t)
-                if j < -l[i]:
-                    J.append(l[i]/abs(j))
-            b = min(J)
-        else:
-            b = 1
-        u = u_t * float(b)
-        p = norm(np.dot(phi_t, x) - y_t, ord=2) + np.dot(l, np.abs(x))
-        d = -np.dot(y_t.T, u)
-        if p - d <= e:
-            print "broke"
-            break"""
+    obj = Minimize(norm(phi_t*x - y_t) + dot(l, abs(x)))
+    constr = [x>=0]
+    prob = Problem(obj, constr)
+    prob.solve()
 
-        #perform coordinate descent
-        y_norm = norm(y_t, ord=2)
-        y_norm_sq = y_norm**2
-        for i in range(n):
-            z = 0
-            phi_i = phi_t[:,i]
-            phi_norm_sq = norm(phi_i, 2)**2 
-            prod = phi_norm_sq*x[i] - h[i]
-            yi_nsq = phi_norm_sq*(x[i]**2) + c - 2*x[i]*h[i]
-            if prod > l[i] * np.sqrt(yi_nsq):
-                z = (prod/phi_norm_sq) - (l[i]/phi_norm_sq)*np.sqrt((phi_norm_sq*yi_nsq - prod**2)/(phi_norm_sq - l[i]**2))
-
-            delta = z - x[i]
-            x[i] = z
-            c += phi_norm_sq*(delta**2) + 2*delta*h[i]
-            phi_ir = np.reshape(phi_i, (phi_i.shape[0],1))
-            h += np.dot(phi_t.T, phi_ir) * delta
-
-        #obj = norm(np.dot(phi_t, x), 2) + np.dot(l, np.abs(x))
-        #print obj
-
-    return x
+    return x.value
     
 def recover_posynomial(w, y, a, l):
     #recovers a posynomial model for data
@@ -89,7 +48,7 @@ def recover_posynomial(w, y, a, l):
                 p *= w_i[k]**a_j[k]
             phi[i,j] = p
     s = l/10.0
-    return nnrsqrt_LASSO(phi, y, s, l, 1)
+    return nnrsqrt_LASSO(phi, y, s, l)
 
 def pow_vec(w, a):
     #computes monomial vector^vector operation
@@ -163,7 +122,7 @@ def test():
 
     return recover_posynomial(w, y, a, 30*np.ones(len(a)))
 
-def main():
+if __name__ == '__main__': 
     for n in range(1, 6):
         poss_exp = np.linspace(-2, 2, 5)
         f, coeffs, exps = rand_func(n, 3, poss_exp)
@@ -181,14 +140,7 @@ def main():
         print "original terms: ", n
         print coeffs
         print map(list, exps)
-        print "recovered terms: ", np.linalg.norm(fhat, 0)
+        print "recovered terms: ", np.linalg.norm(np.ravel(fhat), 0)
         print [c for c in fhat if c > 0]
         print [list(a[i]) for i in range(len(fhat)) if fhat[i] > 0]
-
-
-
-
-    
-
-
 
