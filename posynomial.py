@@ -1,6 +1,4 @@
 import numpy as np
-norm = np.linalg.norm
-
 from cvxpy import *
 
 def nnrsqrt_LASSO(phi, y, s, l, e):
