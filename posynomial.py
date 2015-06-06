@@ -1,6 +1,8 @@
 import numpy as np
 norm = np.linalg.norm
 
+from cvxpy import *
+
 def nnrsqrt_LASSO(phi, y, s, l, e):
     #returns a sparse coefficient vector x
     #model overparameterized with n possible exponent vectors for each measurement
