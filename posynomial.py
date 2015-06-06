@@ -163,7 +163,7 @@ def test():
 
     return recover_posynomial(w, y, a, 30*np.ones(len(a)))
 
-def main():
+if __name__ == '__main__':
     for n in range(1, 6):
         poss_exp = np.linspace(-2, 2, 5)
         f, coeffs, exps = rand_func(n, 3, poss_exp)
